@@ -1,29 +1,73 @@
 import React, { Component } from 'react';
-import { View, Animated, PanResponder } from 'react-native';
+import { View, Animated, PanResponder, Dimensions } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SWIPE_THRESHOLD = 0.6 * SCREEN_WIDTH;
+const SWIPE_OUT_DURATION = 250;
 
 class Deck extends Component {
   constructor(props) {
     super(props);
+
+    const position = new Animated.ValueXY();
     const panResponder = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (event, gesture) => {
-        console.log(gesture);
-        // this gesture object in memory is being reused by react/react-native every time we call onPanResponderMove
-        // it is reset immediately as we exit this function
+        position.setValue({ x: gesture.dx });
       },
-      onPanResponderRelease: () => {}
+      onPanResponderRelease: (event, gesture) => {
+        if (gesture.dx > SWIPE_THRESHOLD) {
+          this.forceSwipeRight();
+        } else if (gesture.dx < -SWIPE_THRESHOLD) {
+          this.forceSwipeLeft();
+        } else {
+          this.resetPosition();
+        }
+      }
     });
-    // panResponder is a self-contained object - it will never be involved with the state system
-    this.state = { panResponder };
+
+    this.state = { panResponder, position }; //ewww
   }
+
+  forceSwipeLeft() {
+    Animated.timing(this.state.position, { toValue: { x: -SCREEN_WIDTH, y: 0 }, duration: SWIPE_OUT_DURATION }).start();
+  }
+
+  forceSwipeRight() {
+    Animated.timing(this.state.position, { toValue: { x: SCREEN_WIDTH, y: 0 }, duration: SWIPE_OUT_DURATION }).start();
+  }
+
+  resetPosition() {
+    Animated.spring(this.state.position, { toValue: { x: 0, y: 0 } }).start();
+  }
+
+  getCardStyle() {
+    const { position } = this.state;
+    const rotate = position.x.interpolate({
+      inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+      outputRange: ['-90deg', '0deg', '90deg']
+    });
+    return {
+      ...position.getLayout(),
+      transform: [{ rotate }]
+    };
+  }
+
   renderCards() {
-    return this.props.data.map(card => {
+    return this.props.data.map((card, index) => {
+      if (index === 0) {
+        return (
+          <Animated.View key={card.id} style={this.getCardStyle()} {...this.state.panResponder.panHandlers}>
+            {this.props.renderCard(card)}
+          </Animated.View>
+        );
+      }
       return this.props.renderCard(card);
     });
   }
 
   render() {
-    return <View {...this.state.panResponder.panHandlers}> {this.renderCards()}</View>;
+    return <View>{this.renderCards()}</View>;
   }
 }
 
