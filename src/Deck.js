@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { View, Animated, PanResponder, Dimensions } from 'react-native';
+import { View, Animated, PanResponder, Dimensions, LayoutAnimation, UIManager } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = 0.6 * SCREEN_WIDTH;
@@ -32,6 +32,24 @@ class Deck extends Component {
     });
 
     this.state = { panResponder, position, index: 0 }; //ewww
+  }
+
+  //WARNING! To be deprecated in React v17. Use new lifecycle static getDerivedStateFromProps instead.
+  // componentWillReceiveProps(nextProps) {
+  //   if (nextProps.data !== this.props.data) {
+  //     this.setState({ index: 0 });
+  //   }
+  // }
+
+  static getDerivedStateFromProps(nextProps, prevState) {
+    if (nextProps.data !== prevState.data) {
+      return { ...prevState, index: 0 };
+    }
+  }
+
+  componentDidUpdate() {
+    UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
+    LayoutAnimation.spring();
   }
 
   forceSwipe(direction) {
@@ -70,24 +88,41 @@ class Deck extends Component {
     if (this.state.index >= this.props.data.length) {
       return this.props.renderNoMoreCards();
     }
-    return this.props.data.map((card, i) => {
-      if (i < this.state.index) {
-        return null;
-      }
-      if (i === this.state.index) {
+    return this.props.data
+      .map((card, i) => {
+        if (i < this.state.index) {
+          return null;
+        }
+        if (i === this.state.index) {
+          return (
+            <Animated.View
+              key={card.id}
+              style={[this.getCardStyle(), styles.cardStyle]}
+              {...this.state.panResponder.panHandlers}
+            >
+              {this.props.renderCard(card)}
+            </Animated.View>
+          );
+        }
         return (
-          <Animated.View key={card.id} style={this.getCardStyle()} {...this.state.panResponder.panHandlers}>
+          <Animated.View key={card.id} style={[styles.cardStyle, { top: 10 * (i - this.state.index) }]}>
             {this.props.renderCard(card)}
           </Animated.View>
         );
-      }
-      return this.props.renderCard(card);
-    });
+      })
+      .reverse();
   }
 
   render() {
     return <View>{this.renderCards()}</View>;
   }
 }
+
+const styles = {
+  cardStyle: {
+    position: 'absolute',
+    width: SCREEN_WIDTH
+  }
+};
 
 export default Deck;
