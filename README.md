@@ -1,6 +1,6 @@
 # Swipe
 
-A simple application showcasing swipe functionality and animations as part of Stephen Grider's Advanced React Native course (link below)
+A simple application showcasing swipe functionality and animations as part of Stephen Grider's Advanced React Native course (link below).
 
 ## Usage
 1. npm install
